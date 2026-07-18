@@ -1,51 +1,604 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mein Immobilien-Sparprojekt</title>
-    <style>
-        body { font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; line-height: 1.6; background-color: #f9f9f9; color: #333; }
-        h1, h2 { color: #2c3e50; }
-        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        .progress-bar { background-color: #e0e0e0; border-radius: 10px; padding: 3px; margin: 15px 0; }
-        .progress { background-color: #27ae60; width: 65%; height: 20px; border-radius: 8px; text-align: center; color: white; font-size: 14px; line-height: 20px; }
-        ul { padding-left: 20px; }
-        li { margin-bottom: 10px; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Familien-Aufgabenplan</title>
+<style>
+  :root{
+    --bg: #1c1c1e;
+    --panel: #2c2c2e;
+    --panel-2: #3a3a3c;
+    --accent: #4a9eff;
+    --accent-2: #ffcc33;
+    --text: #f2f2f7;
+    --text-dim: #9a9a9e;
+    --good: #34c759;
+    --danger: #ff453a;
+    --radius: 16px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin:0; padding:0; height:100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    overflow-x: hidden;
+    user-select: none;
+  }
+  header {
+    padding: 18px 24px 8px;
+    display:flex; align-items:center; justify-content:space-between;
+    flex-wrap: wrap; gap: 10px;
+  }
+  header h1 {
+    font-size: clamp(20px, 3vw, 32px);
+    margin: 0;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+  }
+  header .sub {
+    color: var(--text-dim);
+    font-size: 14px;
+    margin-top: 2px;
+  }
+  .toolbar { display:flex; gap: 8px; flex-wrap: wrap; }
+  button {
+    font-family: inherit;
+    border: none;
+    border-radius: 12px;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    background: var(--panel-2);
+    color: var(--text);
+    transition: transform .08s ease, background .15s ease;
+  }
+  button:active { transform: scale(0.94); }
+  button.primary { background: var(--accent); color: #061424; }
+  button.warn { background: var(--danger); color: #2a0000; }
+  button.ghost { background: transparent; border: 1px solid #48484a; }
+
+  main { padding: 8px 16px 40px; }
+
+  .board-wrap { overflow-x: auto; padding-bottom: 8px; }
+  table.board {
+    border-collapse: separate;
+    border-spacing: 8px;
+    width: 100%;
+    min-width: 900px;
+  }
+  table.board th, table.board td { vertical-align: top; }
+  th.daycol {
+    background: var(--panel-2);
+    color: var(--accent-2);
+    font-size: clamp(12px, 1.6vw, 15px);
+    padding: 10px 6px;
+    border-radius: 10px;
+    text-align: center;
+    position: sticky; top: 0;
+  }
+  th.namecol, td.namecell {
+    width: 130px;
+    min-width: 110px;
+  }
+  td.namecell {
+    background: var(--panel);
+    border-radius: var(--radius);
+    padding: 12px 10px;
+    text-align: center;
+    font-weight: 700;
+    font-size: clamp(14px, 1.8vw, 18px);
+    position: relative;
+  }
+  td.namecell .kid-remove {
+    position:absolute; top:4px; right:6px;
+    background:none; color: var(--text-dim);
+    font-size: 14px; padding: 2px 6px;
+  }
+  td.cell {
+    background: var(--panel);
+    border-radius: var(--radius);
+    padding: 8px;
+    min-width: 110px;
+    min-height: 90px;
+  }
+  .cell-inner {
+    display:flex; flex-wrap: wrap; gap:6px;
+    min-height: 64px;
+    align-content: flex-start;
+  }
+  .chip {
+    display:flex; flex-direction: column; align-items:center; justify-content:center;
+    width: 58px; height: 58px;
+    border-radius: 14px;
+    background: var(--panel-2);
+    font-size: 26px;
+    position: relative;
+    cursor: pointer;
+    border: 2px solid transparent;
+  }
+  .chip .lbl {
+    font-size: 8px;
+    color: var(--text-dim);
+    margin-top: -2px;
+    max-width: 52px;
+    overflow:hidden; text-overflow: ellipsis; white-space:nowrap;
+  }
+  .chip.done {
+    border-color: var(--good);
+    background: #1f3a28;
+    opacity: 0.55;
+  }
+  .chip.done::after {
+    content: "✓";
+    position:absolute; top:-6px; right:-6px;
+    background: var(--good);
+    color:#04220c;
+    width: 18px; height:18px;
+    border-radius: 50%;
+    font-size: 12px;
+    display:flex; align-items:center; justify-content:center;
+    font-weight:900;
+  }
+  .add-chip {
+    width: 58px; height: 58px;
+    border-radius: 14px;
+    background: transparent;
+    border: 2px dashed #555;
+    color: #777;
+    font-size: 22px;
+    display:flex; align-items:center; justify-content:center;
+    cursor: pointer;
+  }
+  .add-name-cell {
+    background: transparent;
+    border: 2px dashed #444;
+    border-radius: var(--radius);
+    color: var(--text-dim);
+    display:flex; align-items:center; justify-content:center;
+    font-size: 24px;
+    min-height: 60px;
+    cursor:pointer;
+  }
+
+  /* Task palette */
+  .task-pool {
+    margin-top: 28px;
+  }
+  .task-pool h2 { font-size: 16px; color: var(--text-dim); font-weight:600; margin-bottom:10px;}
+  .pool-row { display:flex; flex-wrap:wrap; gap: 10px; }
+  .pool-chip {
+    display:flex; align-items:center; gap:8px;
+    background: var(--panel);
+    padding: 8px 12px 8px 8px;
+    border-radius: 12px;
+    font-size: 14px;
+  }
+  .pool-chip .ic { font-size:22px; }
+  .pool-chip button.del {
+    background:none; padding:2px 6px; color: var(--danger); font-size: 13px;
+  }
+  .pool-chip button.del:active { transform:none; }
+
+  /* modal */
+  .overlay {
+    position: fixed; inset:0; background: rgba(0,0,0,0.6);
+    display:none; align-items:center; justify-content:center; z-index: 50;
+    padding: 20px;
+  }
+  .overlay.show { display:flex; }
+  .modal {
+    background: var(--panel);
+    border-radius: 20px;
+    padding: 20px;
+    width: 100%; max-width: 380px;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+  .modal h3 { margin-top:0; font-size:17px; }
+  .modal input[type=text] {
+    width:100%; padding: 12px; border-radius: 10px; border:none;
+    background: var(--panel-2); color: var(--text); font-size:15px; margin-bottom: 10px;
+  }
+  .emoji-grid {
+    display:grid; grid-template-columns: repeat(7, 1fr); gap:6px;
+    margin-bottom: 12px;
+  }
+  .emoji-grid button {
+    padding: 8px 0; font-size: 20px; background: var(--panel-2); border-radius:10px;
+  }
+  .emoji-grid button.sel { background: var(--accent); }
+  .modal-actions { display:flex; gap:8px; margin-top: 8px; justify-content:flex-end; }
+  .task-picker-list { display:flex; flex-wrap:wrap; gap:8px; margin-bottom: 14px; }
+  .task-picker-list .chip { width:56px; height:56px; }
+  footer {
+    text-align:center; color: var(--text-dim); font-size:11px; padding: 10px 0 20px;
+  }
+</style>
 </head>
 <body>
 
-    <h1>Projekt Eigenheim 🏡</h1>
-    <p>Willkommen auf meiner privaten Projektseite. Hier dokumentiere ich den strategischen Fortschritt für meinen zukünftigen Immobilien-Sparplan.</p>
+<header>
+  <div>
+    <h1>🗓️ Aufgabenplan</h1>
+    <div class="sub" id="weekLabel"></div>
+  </div>
+  <div class="toolbar">
+    <button class="ghost" id="resetWeekBtn">Woche zurücksetzen</button>
+    <button class="ghost" id="fullscreenBtn">⛶ Vollbild</button>
+  </div>
+</header>
 
-    <div class="card">
-        <h2>Gesamtfortschritt Eigenkapital</h2>
-        <p>Visualisierung des Sparziels (anonymisiert für den öffentlichen Raum):</p>
-        <div class="progress-bar">
-            <!-- Ändere den Wert bei width (z.B. auf 70%) und den Text "65%" je nach Fortschritt -->
-            <div class="progress" style="width: 65%;">65% erreicht</div>
-        </div>
-        <p><em>Status: Auf Kurs. Geplante Umsetzung im Zielkorridor von 3–5 Jahren.</em></p>
+<main>
+  <div class="board-wrap">
+    <table class="board" id="board"></table>
+  </div>
+
+  <div class="task-pool">
+    <h2>Aufgaben-Vorlagen (zum Zuordnen antippen in einer Zelle)</h2>
+    <div class="pool-row" id="poolRow"></div>
+    <div style="margin-top:10px;">
+      <button class="primary" id="addTaskBtn">+ Neue Aufgabe</button>
     </div>
+  </div>
+</main>
 
-    <div class="card">
-        <h2>Strategische Säulen des Sparplans</h2>
-        <ul>
-            <li><strong>Säule 1:</strong> Monatliche fixe Sparquote auf ein separates Anlagekonto (ETF-Anteil: 40%).</li>
-            <li><strong>Säule 2:</strong> Maximierung der steueroptimierten Vorsorge (z. B. Säule 3a in der Schweiz).</li>
-            <li><strong>Säule 3:</strong> Jährliche Budget-Überprüfung zur Reduktion von Fixkosten.</li>
-        </ul>
+<footer>Läuft lokal im Browser · Daten werden auf diesem Gerät gespeichert</footer>
+
+<!-- Modal: add/edit task -->
+<div class="overlay" id="taskModal">
+  <div class="modal">
+    <h3>Neue Aufgabe</h3>
+    <input type="text" id="taskNameInput" placeholder="Name, z.B. Wäsche">
+    <div class="emoji-grid" id="emojiGrid"></div>
+    <div class="modal-actions">
+      <button class="ghost" id="taskCancelBtn">Abbrechen</button>
+      <button class="primary" id="taskSaveBtn">Speichern</button>
     </div>
+  </div>
+</div>
 
-    <div class="card">
-        <h2>Nächste Meilensteine</h2>
-        <ol>
-            <li>Marktanalyse und Definition der Suchkriterien (Region, Grösse).</li>
-            <li>Erstgespräch mit Finanzierungsberatern bezüglich Tragbarkeit.</li>
-            <li>Kaufnebenkosten (Notar, Grundbuch) als separate Liquiditätsreserve aufbauen.</li>
-        </ol>
+<!-- Modal: add kid -->
+<div class="overlay" id="kidModal">
+  <div class="modal">
+    <h3>Neues Kind</h3>
+    <input type="text" id="kidNameInput" placeholder="Name">
+    <div class="modal-actions">
+      <button class="ghost" id="kidCancelBtn">Abbrechen</button>
+      <button class="primary" id="kidSaveBtn">Speichern</button>
     </div>
+  </div>
+</div>
 
+<!-- Modal: pick task for a cell -->
+<div class="overlay" id="pickModal">
+  <div class="modal">
+    <h3>Aufgabe hinzufügen</h3>
+    <div class="task-picker-list" id="pickList"></div>
+    <div class="modal-actions">
+      <button class="ghost" id="pickCancelBtn">Schliessen</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  const STORAGE_KEY = "aufgabenplan_v1";
+  const DAYS = ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"];
+  const DEFAULT_EMOJIS = ["👕","🧦","🧺","🐟","🧹","🌸","🍽️","🛏️","🗑️","🐕","🧽","📚","🚿","🪣","🧴","🧃","🍳","🚲","🧸","🪟","🌱","🧊"];
+
+  function isoWeek(d){
+    const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    const dayNum = (date.getUTCDay() + 6) % 7;
+    date.setUTCDate(date.getUTCDate() - dayNum + 3);
+    const firstThursday = new Date(Date.UTC(date.getUTCFullYear(),0,4));
+    const diff = (date - firstThursday) / 86400000;
+    const week = 1 + Math.round((diff - ((date.getUTCDay()+6)%7)) / 7);
+    return date.getUTCFullYear() + "-W" + String(week).padStart(2,"0");
+  }
+
+  function defaultState(){
+    return {
+      week: isoWeek(new Date()),
+      kids: [
+        {id: uid(), name: "Cedric"},
+        {id: uid(), name: "Nino"},
+        {id: uid(), name: "Lorina"}
+      ],
+      tasks: [
+        {id: uid(), name: "Wäsche", icon: "👕"},
+        {id: uid(), name: "Tisch decken", icon: "🍽️"},
+        {id: uid(), name: "Staubsaugen", icon: "🧹"},
+        {id: uid(), name: "Blumen giessen", icon: "🌸"},
+        {id: uid(), name: "Tiere füttern", icon: "🐟"}
+      ],
+      // assignments: { "kidId|day": [ {taskId, done} ] }
+      assignments: {}
+    };
+  }
+
+  function uid(){ return Math.random().toString(36).slice(2,10); }
+
+  let state = load();
+
+  function load(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return defaultState();
+      const parsed = JSON.parse(raw);
+      if(!parsed.week) parsed.week = isoWeek(new Date());
+      return parsed;
+    }catch(e){
+      console.error("Ladefehler, starte neu.", e);
+      return defaultState();
+    }
+  }
+
+  function save(){
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }catch(e){
+      console.error("Speichern fehlgeschlagen", e);
+    }
+  }
+
+  function cellKey(kidId, day){ return kidId + "|" + day; }
+
+  function getCellTasks(kidId, day){
+    const key = cellKey(kidId, day);
+    if(!state.assignments[key]) state.assignments[key] = [];
+    return state.assignments[key];
+  }
+
+  function taskById(id){ return state.tasks.find(t => t.id === id); }
+  function kidById(id){ return state.kids.find(k => k.id === id); }
+
+  // ---------- Rendering ----------
+  function render(){
+    renderWeekLabel();
+    renderBoard();
+    renderPool();
+    save();
+  }
+
+  function renderWeekLabel(){
+    const currentWeek = isoWeek(new Date());
+    document.getElementById("weekLabel").textContent =
+      "Woche " + currentWeek + (state.week !== currentWeek ? " · letzte Zurücksetzung: " + state.week : "");
+  }
+
+  function renderBoard(){
+    const table = document.getElementById("board");
+    table.innerHTML = "";
+
+    // header row
+    const thead = document.createElement("tr");
+    const cornerTh = document.createElement("th");
+    cornerTh.className = "namecol";
+    thead.appendChild(cornerTh);
+    DAYS.forEach(d => {
+      const th = document.createElement("th");
+      th.className = "daycol";
+      th.textContent = d;
+      thead.appendChild(th);
+    });
+    table.appendChild(thead);
+
+    // kid rows
+    state.kids.forEach(kid => {
+      const tr = document.createElement("tr");
+
+      const nameTd = document.createElement("td");
+      nameTd.className = "namecell";
+      nameTd.textContent = kid.name;
+      const rm = document.createElement("button");
+      rm.className = "kid-remove";
+      rm.textContent = "✕";
+      rm.onclick = (e) => {
+        e.stopPropagation();
+        if(confirm("Kind \"" + kid.name + "\" entfernen? Alle zugewiesenen Aufgaben dieses Kindes werden gelöscht.")){
+          state.kids = state.kids.filter(k => k.id !== kid.id);
+          DAYS.forEach(d => delete state.assignments[cellKey(kid.id, d)]);
+          render();
+        }
+      };
+      nameTd.appendChild(rm);
+      tr.appendChild(nameTd);
+
+      DAYS.forEach(day => {
+        const td = document.createElement("td");
+        td.className = "cell";
+        const inner = document.createElement("div");
+        inner.className = "cell-inner";
+
+        getCellTasks(kid.id, day).forEach((entry, idx) => {
+          const t = taskById(entry.taskId);
+          if(!t) return;
+          const chip = document.createElement("div");
+          chip.className = "chip" + (entry.done ? " done" : "");
+          chip.innerHTML = "<div>" + t.icon + "</div><div class='lbl'>" + t.name + "</div>";
+          chip.onclick = () => {
+            entry.done = !entry.done;
+            render();
+          };
+          chip.oncontextmenu = (e) => {
+            e.preventDefault();
+            removeAssignment(kid.id, day, idx);
+          };
+          let pressTimer;
+          chip.addEventListener("touchstart", () => {
+            pressTimer = setTimeout(() => removeAssignment(kid.id, day, idx), 600);
+          });
+          chip.addEventListener("touchend", () => clearTimeout(pressTimer));
+          inner.appendChild(chip);
+        });
+
+        const addBtn = document.createElement("div");
+        addBtn.className = "add-chip";
+        addBtn.textContent = "+";
+        addBtn.onclick = () => openPickModal(kid.id, day);
+        inner.appendChild(addBtn);
+
+        td.appendChild(inner);
+        tr.appendChild(td);
+      });
+
+      table.appendChild(tr);
+    });
+
+    // add-kid row
+    const addTr = document.createElement("tr");
+    const addNameTd = document.createElement("td");
+    addNameTd.className = "add-name-cell";
+    addNameTd.textContent = "+ Kind";
+    addNameTd.onclick = openKidModal;
+    addTr.appendChild(addNameTd);
+    for(let i=0;i<DAYS.length;i++){
+      const filler = document.createElement("td");
+      addTr.appendChild(filler);
+    }
+    table.appendChild(addTr);
+  }
+
+  function removeAssignment(kidId, day, idx){
+    const arr = getCellTasks(kidId, day);
+    arr.splice(idx,1);
+    render();
+  }
+
+  function renderPool(){
+    const row = document.getElementById("poolRow");
+    row.innerHTML = "";
+    state.tasks.forEach(t => {
+      const chip = document.createElement("div");
+      chip.className = "pool-chip";
+      chip.innerHTML = "<span class='ic'>" + t.icon + "</span><span>" + t.name + "</span>";
+      const del = document.createElement("button");
+      del.className = "del";
+      del.textContent = "✕";
+      del.onclick = () => {
+        if(confirm("Aufgabe \"" + t.name + "\" löschen? Sie wird aus allen Tagen entfernt.")){
+          state.tasks = state.tasks.filter(x => x.id !== t.id);
+          Object.keys(state.assignments).forEach(k => {
+            state.assignments[k] = state.assignments[k].filter(a => a.taskId !== t.id);
+          });
+          render();
+        }
+      };
+      chip.appendChild(del);
+      row.appendChild(chip);
+    });
+  }
+
+  // ---------- Modals ----------
+  const taskModal = document.getElementById("taskModal");
+  const kidModal = document.getElementById("kidModal");
+  const pickModal = document.getElementById("pickModal");
+
+  document.getElementById("addTaskBtn").onclick = () => {
+    document.getElementById("taskNameInput").value = "";
+    buildEmojiGrid(null);
+    taskModal.classList.add("show");
+  };
+  document.getElementById("taskCancelBtn").onclick = () => taskModal.classList.remove("show");
+  document.getElementById("taskSaveBtn").onclick = () => {
+    const name = document.getElementById("taskNameInput").value.trim();
+    const sel = document.querySelector("#emojiGrid button.sel");
+    const icon = sel ? sel.textContent : "⭐";
+    if(!name){ alert("Bitte einen Namen eingeben."); return; }
+    state.tasks.push({id: uid(), name, icon});
+    taskModal.classList.remove("show");
+    render();
+  };
+
+  function buildEmojiGrid(selected){
+    const grid = document.getElementById("emojiGrid");
+    grid.innerHTML = "";
+    DEFAULT_EMOJIS.forEach(e => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = e;
+      if(e === selected) b.classList.add("sel");
+      b.onclick = () => {
+        grid.querySelectorAll("button").forEach(x => x.classList.remove("sel"));
+        b.classList.add("sel");
+      };
+      grid.appendChild(b);
+    });
+    if(!grid.querySelector(".sel") && grid.firstChild) grid.firstChild.classList.add("sel");
+  }
+
+  function openKidModal(){
+    document.getElementById("kidNameInput").value = "";
+    kidModal.classList.add("show");
+  }
+  document.getElementById("kidCancelBtn").onclick = () => kidModal.classList.remove("show");
+  document.getElementById("kidSaveBtn").onclick = () => {
+    const name = document.getElementById("kidNameInput").value.trim();
+    if(!name){ alert("Bitte einen Namen eingeben."); return; }
+    state.kids.push({id: uid(), name});
+    kidModal.classList.remove("show");
+    render();
+  };
+
+  function openPickModal(kidId, day){
+    const list = document.getElementById("pickList");
+    list.innerHTML = "";
+    if(state.tasks.length === 0){
+      const p = document.createElement("div");
+      p.style.color = "var(--text-dim)";
+      p.textContent = "Noch keine Aufgaben-Vorlagen vorhanden. Erst unten eine Aufgabe anlegen.";
+      list.appendChild(p);
+    }
+    state.tasks.forEach(t => {
+      const chip = document.createElement("div");
+      chip.className = "chip";
+      chip.innerHTML = "<div>" + t.icon + "</div><div class='lbl'>" + t.name + "</div>";
+      chip.onclick = () => {
+        getCellTasks(kidId, day).push({taskId: t.id, done:false});
+        pickModal.classList.remove("show");
+        render();
+      };
+      list.appendChild(chip);
+    });
+    pickModal.classList.add("show");
+  }
+  document.getElementById("pickCancelBtn").onclick = () => pickModal.classList.remove("show");
+
+  [taskModal, kidModal, pickModal].forEach(m => {
+    m.addEventListener("click", (e) => { if(e.target === m) m.classList.remove("show"); });
+  });
+
+  // ---------- Toolbar actions ----------
+  document.getElementById("resetWeekBtn").onclick = () => {
+    if(confirm("Alle Häkchen dieser Woche zurücksetzen?")){
+      Object.values(state.assignments).forEach(arr => arr.forEach(a => a.done = false));
+      state.week = isoWeek(new Date());
+      render();
+    }
+  };
+
+  document.getElementById("fullscreenBtn").onclick = () => {
+    if(!document.fullscreenElement){
+      document.documentElement.requestFullscreen().catch(()=>{});
+    } else {
+      document.exitFullscreen();
+    }
+  };
+
+  // Auto-suggest weekly reset if a new ISO week has started
+  (function autoWeekCheck(){
+    const nowWeek = isoWeek(new Date());
+    if(state.week && state.week !== nowWeek){
+      // don't force-reset automatically; just update label, user can reset manually
+    }
+  })();
+
+  render();
+})();
+</script>
 </body>
 </html>
